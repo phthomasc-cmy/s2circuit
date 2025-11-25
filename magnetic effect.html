@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Effect: Attraction Test 🧲</title>
+    <style>
+        :root {
+            --coil-color: #e67e22;
+            --core-color: #95a5a6;
+            --field-color: #00cec9;
+            --bg-color: #2d3436;
+            --panel-color: #353b48;
+            --accent-color: #74b9ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { text-align: center; }
+
+        .container {
+            background-color: var(--panel-color);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            text-align: center;
+        }
+
+        /* --- Experiment Box --- */
+        .experiment-zone {
+            position: relative;
+            height: 320px;
+            background: #1e272e;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid #555;
+            overflow: hidden;
+        }
+
+        /* The Magnet at the Top */
+        .magnet-assembly {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 240px;
+            height: 50px;
+            z-index: 10;
+        }
+
+        .iron-core {
+            width: 100%;
+            height: 100%;
+            background: var(--core-color);
+            border-radius: 5px;
+            box-shadow: inset 0 -5px 10px rgba(0,0,0,0.5);
+        }
+
+        .coil-windings {
+            position: absolute;
+            top: -5px;
+            left: 10px;
+            right: 10px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .wire-loop {
+            width: 15px;
+            height: 100%;
+            background: repeating-linear-gradient(45deg, #d35400, #e67e22 5px);
+            border-radius: 10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* Magnetic Field Glow */
+        .mag-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 260px;
+            height: 80px;
+            background: var(--field-color);
+            border-radius: 50%;
+            opacity: 0;
+            filter: blur(30px);
+            z-index: 1;
+            transition: opacity 0.2s;
+        }
+
+        /* The Table Surface */
+        .table {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 30px;
+            background: #485460;
+            border-top: 3px solid #808e9b;
+            z-index: 5;
+        }
+
+        /* The Metal Objects */
+        .metal-object {
+            position: absolute;
+            font-size: 2rem;
+            bottom: 10px; /* Start on table */
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy effect */
+            z-index: 6;
+            filter: drop-shadow(2px 4px 3px rgba(0,0,0,0.4));
+            user-select: none;
+        }
+
+        /* --- Controls --- */
+        .controls {
+            margin-top: 20px;
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 15px;
+            border-radius: 5px;
+            background: #555;
+            outline: none;
+            cursor: pointer;
+            accent-color: var(--field-color);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .status-message {
+            margin-top: 10px;
+            height: 20px;
+            color: var(--field-color);
+            font-size: 0.9rem;
+        }
+
+        /* Helper class for when objects are lifted */
+        .lifted {
+            /* This will be handled by inline styles for dynamic positions, 
+               but we add a class for tracking */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🧲 Magnetic Attraction Power 🧲</h1>
+
+    <div class="container">
+        <div class="experiment-zone">
+            
+            <!-- The Invisible Magnetic Field Glow -->
+            <div class="mag-glow" id="magGlow"></div>
+
+            <!-- The Electromagnet -->
+            <div class="magnet-assembly">
+                <div class="iron-core"></div>
+                <div class="coil-windings">
+                    <div class="wire-loop"></div>
+                    <div class="wire-loop"></div>
+                    <div class="wire-loop"></div>
+                    <div class="wire-loop"></div>
+                    <div class="wire-loop"></div>
+                    <div class="wire-loop"></div>
+                    <div class="wire-loop"></div>
+                    <div class="wire-loop"></div>
+                </div>
+            </div>
+
+            <!-- Objects (Generated by JS or placed here) -->
+            <div class="table"></div>
+            
+            <!-- 
+               Each object has a "data-weight" attribute. 
+               Higher weight = needs more current to lift.
+            -->
+            <div class="metal-object" id="obj1" style="left: 5%;" data-weight="1.0">📍</div>
+            <div class="metal-object" id="obj2" style="left: 15%;" data-weight="2.0">🖇️</div>
+            <div class="metal-object" id="obj3" style="left: 25%;" data-weight="3.0">📎</div>
+            <div class="metal-object" id="obj4" style="left: 38%;" data-weight="4.5">🧷</div>
+            <div class="metal-object" id="obj5" style="left: 50%;" data-weight="6.0">🔩</div>
+            <div class="metal-object" id="obj6" style="left: 65%;" data-weight="7.5">🔑</div>
+            <div class="metal-object" id="obj7" style="left: 80%;" data-weight="8.5">🔧</div>
+            <div class="metal-object" id="obj8" style="left: 90%;" data-weight="9.5">🔨</div>
+
+        </div>
+
+        <div class="controls">
+            <label for="currentSlider">Current Flow (Amperes)</label>
+            <input type="range" id="currentSlider" min="0" max="10" step="0.1" value="0">
+            
+            <div class="stats-row">
+                <span id="ampValue">0.0 A</span>
+                <span id="itemsValue">0 Items Lifted</span>
+            </div>
+            <div class="status-message" id="statusMsg">System Off</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Fix for Math Rendering ---
+        // This finds every element with class="math-display" and converts the text to Math
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('.math-display').forEach(function(element) {
+                katex.render(element.textContent, element, {
+                    throwOnError: false
+                });
+            });
+        });
+
+	const slider = document.getElementById('currentSlider');
+        const ampValue = document.getElementById('ampValue');
+        const itemsValue = document.getElementById('itemsValue');
+        const statusMsg = document.getElementById('statusMsg');
+        const magGlow = document.getElementById('magGlow');
+        
+        // Select all objects with the class 'metal-object'
+        const objects = document.querySelectorAll('.metal-object');
+
+        slider.addEventListener('input', () => {
+            const current = parseFloat(slider.value);
+            
+            // 1. Update UI Text
+            ampValue.innerText = current.toFixed(1) + " A";
+            
+            // 2. Update Magnetic Glow Opacity
+            // Max opacity 0.8 when current is 10
+            magGlow.style.opacity = current / 12; 
+
+            let liftedCount = 0;
+
+            // 3. Check each object against the current
+            objects.forEach((obj, index) => {
+                const weightThreshold = parseFloat(obj.getAttribute('data-weight'));
+                
+                if (current >= weightThreshold) {
+                    // --- LIFT UP ---
+                    liftedCount++;
+                    
+                    // Calculate a position closer to the magnet (top: 90px approx)
+                    // Add some randomness so they don't form a perfect straight line
+                    const randomHeight = 85 + (index % 3) * 10; 
+                    
+                    // Rotate slightly towards center for realism
+                    // Objects on left rotate right, objects on right rotate left
+                    const screenCenter = 50; // percent
+                    const objLeft = parseFloat(obj.style.left);
+                    const rotation = (objLeft - screenCenter) * -0.5; 
+
+                    obj.style.bottom = (320 - randomHeight) + "px"; // Lift to top area
+                    obj.style.transform = `rotate(${rotation}deg) scale(1.1)`;
+                } else {
+                    // --- DROP DOWN ---
+                    // Reset to table
+                    obj.style.bottom = "10px";
+                    
+                    // Randomize 'lying on table' rotation slightly
+                    const restRotation = (index * 15) % 90;
+                    obj.style.transform = `rotate(${restRotation}deg) scale(1)`;
+                }
+            });
+
+            itemsValue.innerText = `${liftedCount} / ${objects.length} Items Attracted`;
+
+            // 4. Fun Status Messages
+            if(current === 0) statusMsg.innerText = "No Current. No Magnetism.";
+            else if(current < 3) statusMsg.innerText = "Weak Field: Picking up light items...";
+            else if(current < 7) statusMsg.innerText = "Medium Field: Holding steady!";
+            else if(current < 9.5) statusMsg.innerText = "Strong Field: Heavy tools lifting!";
+            else statusMsg.innerText = "MAX POWER: SUPER MAGNET!";
+        });
+    </script>
+</body>
+</html>
