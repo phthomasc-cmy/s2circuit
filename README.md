@@ -38,6 +38,7 @@
     <div class="link-box">
         <a href="magnetic effect.html">➜ Magnetic Effect of Electricity</a>
         <a href="heating effect.html">➜ Heating Effect of Electricity</a>
+        <a href="voltage_vs_current.html">➜ Heating Effect of Electricity</a>
     </div>
 
 </body>
