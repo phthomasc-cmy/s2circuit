@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voltage, Current & Brightness Simulation</title>
+    <style>
+        :root {
+            /* Sunshine Theme Colors */
+            --bg-color: #FFFDE7;       /* Very light cream */
+            --card-bg: #ffffff;        /* White */
+            --accent-main: #FFB300;    /* Sun Yellow */
+            --accent-dark: #F57F17;    /* Deep Orange */
+            --text-color: #5D4037;     /* Warm Brown */
+            --wire-color: #5D4037;
+            --bulb-off: #BCAAA4;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(245, 127, 23, 0.15);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: var(--accent-dark);
+        }
+
+        /* --- Circuit Visualization Area --- */
+        .circuit-board {
+            position: relative;
+            height: 300px;
+            margin: 30px 0;
+            border: 2px dashed #FFE082;
+            border-radius: 15px;
+            background: #FFF9C4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 50px;
+            overflow: hidden;
+        }
+
+        /* Wires (SVG) */
+        .wires {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .wire-path {
+            fill: none;
+            stroke: var(--wire-color);
+            stroke-width: 4;
+        }
+
+        .electron-flow {
+            fill: none;
+            stroke: var(--accent-main);
+            stroke-width: 4;
+            stroke-dasharray: 10 20;
+            animation: flow 5s linear infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes flow {
+            to { stroke-dashoffset: -300; }
+        }
+
+        /* Battery Stack */
+        .battery-container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column-reverse; /* Build up */
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 150px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 20px;
+            background: var(--accent-main);
+            border: 2px solid var(--accent-dark);
+            margin-bottom: 2px;
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        /* Positive terminal nub */
+        .cell::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 15px;
+            width: 20px;
+            height: 4px;
+            background: var(--accent-dark);
+            border-radius: 2px 2px 0 0;
+        }
+
+        /* The Bulb */
+        .bulb-container {
+            position: relative;
+            z-index: 2;
+            width: 80px;
+            height: 110px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .bulb-glass {
+            width: 60px;
+            height: 60px;
+            background-color: var(--bulb-off);
+            border-radius: 50%;
+            border: 2px solid #8D6E63;
+            transition: box-shadow 0.3s, background-color 0.3s;
+            position: relative;
+        }
+
+        .bulb-base {
+            width: 30px;
+            height: 30px;
+            background: #5D4037;
+            border-radius: 0 0 10px 10px;
+            margin-top: -5px;
+            background: repeating-linear-gradient(
+                45deg,
+                #5D4037,
+                #5D4037 5px,
+                #795548 5px,
+                #795548 10px
+            );
+        }
+
+        /* --- Controls & Data --- */
+        .controls {
+            background: #FFF3E0;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .slider-container {
+            margin-bottom: 20px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: #FFE082;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: var(--accent-dark);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .data-display {
+            display: flex;
+            justify-content: space-around;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .data-card {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #8D6E63;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .value {
+            color: var(--accent-dark);
+            font-size: 1.4rem;
+        }
+
+        .description {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #6D4C41;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Simple Circuit Simulation</h1>
+        <p>Add cells to see how voltage affects current and brightness.</p>
+
+        <div class="circuit-board">
+            <!-- SVG Wiring and Electron Flow -->
+            <svg class="wires" viewBox="0 0 400 200" preserveAspectRatio="none">
+                <!-- The static wire path -->
+                <path d="M 50 100 L 50 180 L 350 180 L 350 100" class="wire-path" /> <!-- Bottom Loop -->
+                <path d="M 50 50 L 50 20 L 350 20 L 350 50" class="wire-path" />   <!-- Top Loop -->
+                
+                <!-- The animated electron flow (dashed line) -->
+                <path d="M 50 100 L 50 180 L 350 180 L 350 100 M 350 50 L 350 20 L 50 20 L 50 50" 
+                      class="electron-flow" id="electronPath" />
+            </svg>
+
+            <!-- Left Side: Battery Stack -->
+            <div class="battery-container" id="batteryStack">
+                <div class="cell"></div>
+            </div>
+
+            <!-- Right Side: Light Bulb -->
+            <div class="bulb-container">
+                <div class="bulb-glass" id="bulbGlass"></div>
+                <div class="bulb-base"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="slider-container">
+                <label for="cellRange">Number of Cells (Batteries)</label><br><br>
+                <input type="range" id="cellRange" min="0" max="6" value="1" step="1">
+            </div>
+
+            <div class="data-display">
+                <div class="data-card">
+                    <span class="label">Voltage (V)</span>
+                    <span class="value" id="voltageVal">1.5</span> V
+                </div>
+                <div class="data-card">
+                    <span class="label">Current (I)</span>
+                    <span class="value" id="currentVal">0.3</span> A
+                </div>
+            </div>
+        </div>
+
+        <div class="description">
+            <p id="statusText">The current is flowing gently.</p>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        const slider = document.getElementById('cellRange');
+        const batteryStack = document.getElementById('batteryStack');
+        const bulbGlass = document.getElementById('bulbGlass');
+        const electronPath = document.getElementById('electronPath');
+        const voltageDisplay = document.getElementById('voltageVal');
+        const currentDisplay = document.getElementById('currentVal');
+        const statusText = document.getElementById('statusText');
+
+        // Constants
+        const VOLTS_PER_CELL = 1.5;
+        const RESISTANCE = 5; // Arbitrary resistance in Ohms
+
+        function updateSimulation() {
+            const numCells = parseInt(slider.value);
+            
+            // 1. Calculate Physics
+            const voltage = numCells * VOLTS_PER_CELL;
+            let current = voltage / RESISTANCE;
+            
+            // Round for display
+            current = Math.round(current * 100) / 100;
+
+            // 2. Update Text Data
+            voltageDisplay.textContent = voltage.toFixed(1);
+            currentDisplay.textContent = current.toFixed(1);
+
+            // 3. Update Battery Visuals (Stacking Divs)
+            batteryStack.innerHTML = ''; // Clear existing
+            if (numCells === 0) {
+                // Placeholder outline if empty
+                batteryStack.style.border = "1px dashed #ccc";
+            } else {
+                batteryStack.style.border = "none";
+                for(let i=0; i<numCells; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    batteryStack.appendChild(cell);
+                }
+            }
+
+            // 4. Update Bulb Brightness
+            if (numCells === 0) {
+                // Off state
+                bulbGlass.style.backgroundColor = '#BCAAA4'; // Grayish
+                bulbGlass.style.boxShadow = 'none';
+                statusText.textContent = "Circuit open. No power.";
+            } else {
+                // Calculate brightness intensity (0 to 1 scale roughly)
+                // Max cells is 6, max voltage 9V. 
+                const intensity = numCells / 6; 
+                
+                // Color shifts from dim orange to bright white-yellow
+                // Mix warm yellow (#FDB813) with White based on intensity
+                bulbGlass.style.backgroundColor = `rgba(255, 235, 59, ${0.4 + (intensity * 0.6)})`;
+                
+                // Glow size (box shadow)
+                const glowSize = intensity * 60; 
+                const glowColor = `rgba(255, 179, 0, ${0.5 + (intensity * 0.5)})`;
+                bulbGlass.style.boxShadow = `0 0 ${glowSize}px ${glowSize/2}px ${glowColor}`;
+
+                // Text description update
+                if(numCells <= 2) statusText.textContent = "Low Voltage: Dim light, slow current.";
+                else if(numCells <= 4) statusText.textContent = "Medium Voltage: Bright light, steady current.";
+                else statusText.textContent = "High Voltage: Very bright light! High current flow.";
+            }
+
+            // 5. Update Electron Flow Speed
+            if (numCells === 0) {
+                electronPath.style.animation = 'none';
+                electronPath.style.opacity = '0.1';
+            } else {
+                // Higher current = Faster animation (Lower duration)
+                // Base duration 2s, divide by current factor
+                const duration = 3 / (numCells * 0.8); 
+                electronPath.style.animation = `flow ${duration}s linear infinite`;
+                electronPath.style.opacity = '1';
+            }
+        }
+
+        // Event Listener
+        slider.addEventListener('input', updateSimulation);
+
+        // Initialize
+        updateSimulation();
+
+    </script>
+</body>
+</html>
