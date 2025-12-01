@@ -39,6 +39,7 @@
         <a href="magnetic effect.html">➜ Magnetic Effect of Electricity</a>
         <a href="heating effect.html">➜ Heating Effect of Electricity</a>
         <a href="voltage_VS_current.html">➜ Number of cells VS current</a>
+        <a href="ohmlaw.html">➜ how does resistance affect current?</a>
     </div>
 
 </body>
