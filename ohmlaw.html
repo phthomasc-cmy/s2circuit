@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>☃️ Ohm's Winter Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a; /* Dark Winter Night */
+            --panel-bg: rgba(255, 255, 255, 0.1); /* Frosted Glass */
+            --text-color: #e0f2fe; /* Ice White */
+            --accent-v: #fbbf24; /* Warm Light (Voltage) */
+            --accent-r: #f87171; /* Brick Red (Resistance) */
+            --accent-i: #38bdf8; /* Cyan Ice (Current) */
+            --wire-color: #475569;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* Falling Snow Background */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            color: #fff;
+            font-size: 1em;
+            opacity: 0.8;
+            z-index: -1;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            to { transform: translateY(105vh); }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            text-shadow: 0 0 10px #38bdf8;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* Glassmorphism Panels */
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 25px;
+            flex: 1;
+            min-width: 320px;
+            max-width: 600px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+
+        /* --- CIRCUIT VISUALIZATION --- */
+        .circuit-container {
+            position: relative;
+            height: 250px;
+            margin: 20px 0;
+            /* The wire track */
+            border: 6px solid var(--wire-color); 
+            border-radius: 15px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.2);
+        }
+
+        /* Components on the wire */
+        .component-label {
+            position: absolute;
+            background: #1e293b;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            border: 2px solid #fff;
+            z-index: 10;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .lbl-battery { top: 50%; left: -15px; transform: translate(-50%, -50%); border-color: var(--accent-v); color: var(--accent-v); }
+        .lbl-resistor { top: 50%; right: -15px; transform: translate(50%, -50%); border-color: var(--accent-r); color: var(--accent-r); }
+        
+        /* THE ELECTRON LOOP */
+        /* 
+           We use a container exactly the size of the border box.
+           The electrons will travel the perimeter.
+        */
+        .electron-track {
+            position: absolute;
+            top: -6px; left: -6px; right: -6px; bottom: -6px; /* Cover the border */
+            pointer-events: none;
+        }
+
+        .electron {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: var(--accent-i);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-i); /* Glowing effect */
+            opacity: 0.9;
+            offset-path: rect(0% 100% 100% 0% round 15px); /* Modern CSS Path */
+            animation: circuit-flow linear infinite;
+        }
+
+        /* Fallback animation for older browsers or if offset-path acts up,
+           using standard keyframes to trace the rectangle */
+        @keyframes circuit-flow {
+            0%   { offset-distance: 0%; }
+            100% { offset-distance: 100%; }
+        }
+
+        /* --- CONTROLS --- */
+        .control-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.95em; }
+        
+        /* Custom Range Slider Style */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px; width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+        }
+
+        .readout {
+            text-align: center;
+            font-size: 1.3em;
+            margin-top: 5px;
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        /* Buttons */
+        .btn-main {
+            background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6); }
+        .btn-main:active { transform: scale(0.98); }
+
+        .btn-reset {
+            background: rgba(248, 113, 113, 0.2);
+            color: #fca5a5;
+            border: 1px solid #f87171;
+            padding: 8px;
+            margin-top: 15px;
+            width: 100%;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-reset:hover { background: rgba(248, 113, 113, 0.4); }
+
+        /* Table & Chart */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; color: #cbd5e1; }
+        th { text-align: left; border-bottom: 2px solid #475569; padding: 8px; color: #38bdf8; }
+        td { border-bottom: 1px solid #334155; padding: 8px; }
+        
+        .chart-box {
+            position: relative;
+            height: 300px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background Snow Container -->
+    <div id="snow-container"></div>
+
+    <header>
+        <h1>☃️ Ohm's Law: Winter Lab ❄️</h1>
+        <p>Explore the relationship between Current (I) and Resistance (R)</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- LEFT PANEL: LAB CONTROLS -->
+        <div class="panel">
+            <h2>🧪 The Experiment</h2>
+            
+            <!-- Circuit Animation -->
+            <div class="circuit-container">
+                <div class="electron-track" id="electron-track">
+                    <!-- Electrons generated by JS -->
+                </div>
+                <div class="component-label lbl-battery">⚡️ <span id="lbl-v">12</span>V</div>
+                <div class="component-label lbl-resistor">🛑 <span id="lbl-r">10</span>&Omega;</div>
+            </div>
+
+            <!-- Controls -->
+            <div class="control-group">
+                <label>🔋 Voltage (V) - <i>Push Force</i></label>
+                <input type="range" id="slider-v" min="1" max="24" value="12" step="1">
+                <div class="readout" style="color: var(--accent-v)"><span id="display-v">12</span> Volts</div>
+            </div>
+
+            <div class="control-group">
+                <label>🧤 Resistance (R) - <i>The Obstacle</i></label>
+                <input type="range" id="slider-r" min="2" max="100" value="10" step="1">
+                <div class="readout" style="color: var(--accent-r)"><span id="display-r">10</span> Ohms (&Omega;)</div>
+            </div>
+
+            <div class="control-group">
+                <label>❄️ Current (I) - <i>The Flow</i></label>
+                <div class="readout" style="color: var(--accent-i)"><span id="display-i">1.20</span> Amps</div>
+            </div>
+
+            <button class="btn-main" onclick="recordData()">📝 Record Data Point</button>
+        </div>
+
+        <!-- RIGHT PANEL: NOTEBOOK -->
+        <div class="panel">
+            <h2>📊 Analysis Notebook</h2>
+            
+            <div class="chart-box">
+                <canvas id="myChart"></canvas>
+            </div>
+
+            <div style="flex: 1; overflow-y: auto; margin-top: 20px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Resistance (R)</th>
+                            <th>Current (I)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                        <!-- Data Rows -->
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn-reset" onclick="resetLab()">🗑 Clear Notebook</button>
+        </div>
+    </div>
+
+    <script>
+        /* --- 1. SNOWFALL EFFECT --- */
+        function createSnow() {
+            const container = document.getElementById('snow-container');
+            const snowflakeCount = 30;
+            for (let i = 0; i < snowflakeCount; i++) {
+                const flake = document.createElement('div');
+                flake.className = 'snowflake';
+                flake.innerHTML = '❄';
+                flake.style.left = Math.random() * 100 + 'vw';
+                flake.style.animationDuration = (Math.random() * 3 + 2) + 's'; // 2-5s
+                flake.style.opacity = Math.random();
+                flake.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                container.appendChild(flake);
+            }
+        }
+        createSnow();
+
+        /* --- 2. LAB LOGIC --- */
+        const sliderV = document.getElementById('slider-v');
+        const sliderR = document.getElementById('slider-r');
+        const displayV = document.getElementById('display-v');
+        const displayR = document.getElementById('display-r');
+        const displayI = document.getElementById('display-i');
+        const lblV = document.getElementById('lbl-v');
+        const lblR = document.getElementById('lbl-r');
+        const track = document.getElementById('electron-track');
+        const tableBody = document.getElementById('data-table-body');
+
+        let dataPoints = [];
+        let electrons = [];
+
+        // Setup Chart.js
+        const ctx = document.getElementById('myChart').getContext('2d');
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+        
+        const myChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'I vs R',
+                    data: [],
+                    backgroundColor: '#38bdf8', // Ice blue
+                    borderColor: '#38bdf8',
+                    showLine: true,
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: { display: true, text: 'Resistance (Ω)', color: '#e0f2fe' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Current (A)', color: '#e0f2fe' },
+                        min: 0
+                    }
+                }
+            }
+        });
+
+        // Create Electrons
+        function initElectrons() {
+            track.innerHTML = '';
+            electrons = [];
+            // Create 10 electrons
+            for(let i=0; i<10; i++) {
+                let e = document.createElement('div');
+                e.className = 'electron';
+                // Spacing them out along the path (offset-distance)
+                // We pause animation initially to set positions manually if needed, 
+                // but using negative delay is cleaner for CSS animations
+                e.style.animationDelay = `-${i * 0.5}s`; 
+                track.appendChild(e);
+                electrons.push(e);
+            }
+        }
+        initElectrons();
+
+        function updateCircuit() {
+            let V = parseFloat(sliderV.value);
+            let R = parseFloat(sliderR.value);
+            let I = V / R;
+
+            // Update Text
+            displayV.innerText = V;
+            displayR.innerText = R;
+            lblV.innerText = V;
+            lblR.innerText = R;
+            displayI.innerText = I.toFixed(2);
+
+            // Update Animation Speed
+            // Base duration calculation:
+            // If I = 1A, duration = 4s. If I = 2A, duration = 2s.
+            // We clamp speed so it doesn't stop or go uncontrollably fast.
+            let duration = 4 / I; 
+            if(duration > 10) duration = 10; // Min speed limit
+            if(duration < 0.5) duration = 0.5; // Max speed limit
+
+            electrons.forEach(e => {
+                e.style.animationDuration = `${duration}s`;
+            });
+        }
+
+        function recordData() {
+            let R = parseFloat(sliderR.value);
+            let V = parseFloat(sliderV.value); // Capture current V
+            let I = parseFloat((V / R).toFixed(2));
+
+            // Check for duplicate Resistance value to avoid weird graph lines
+            let exists = dataPoints.find(p => p.x === R);
+            if (exists) {
+                alert("🥶 You already recorded data for " + R + " Ohms! Try a different value.");
+                return;
+            }
+
+            dataPoints.push({x: R, y: I});
+            dataPoints.sort((a, b) => a.x - b.x);
+
+            // Refresh Table
+            tableBody.innerHTML = "";
+            dataPoints.forEach(pt => {
+                let row = `<tr>
+                    <td>🧱 ${pt.x} &Omega;</td>
+                    <td>❄️ ${pt.y} A</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+
+            // Refresh Chart
+            myChart.data.datasets[0].data = dataPoints;
+            myChart.update();
+        }
+
+        function resetLab() {
+            dataPoints = [];
+            myChart.data.datasets[0].data = [];
+            myChart.update();
+            tableBody.innerHTML = "";
+        }
+
+        // Listeners
+        sliderV.addEventListener('input', updateCircuit);
+        sliderR.addEventListener('input', updateCircuit);
+
+        // Initial call
+        updateCircuit();
+
+    </script>
+</body>
+</html>
