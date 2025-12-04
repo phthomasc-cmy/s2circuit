@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rheostat Simulator - Fixed Schematic</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --text-color: #333;
+            --accent-color: #c0392b;
+            --info-bg: #e3f2fd;
+            --info-border: #2196f3;
+            --highlight-green: #e8f5e9;
+            --border-green: #4caf50;
+            --highlight-orange: #fff3e0;
+            --border-orange: #ff9800;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin-bottom: 5px; color: #2c3e50; }
+        p.subtitle { color: #7f8c8d; margin-bottom: 25px; margin-top: 0; }
+
+        .simulator-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            max-width: 1100px;
+            width: 100%;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .visual-panel { flex: 3; min-width: 400px; }
+        .data-panel { flex: 2; min-width: 300px; }
+
+        /* --- Visuals --- */
+        #rheostat-svg {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            cursor: pointer;
+            overflow: visible;
+            margin-bottom: 10px;
+        }
+
+        .slider-handle { cursor: grab; transition: fill 0.2s; }
+        .slider-handle:active { cursor: grabbing; }
+        .slider-handle:hover { fill: #d64736; }
+        
+        /* --- Text Box --- */
+        #dynamic-explanation {
+            background-color: var(--info-bg);
+            border-left: 5px solid var(--info-border);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #2c3e50;
+            max-width: 550px;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        
+        .state-right { background-color: var(--highlight-orange); border-left-color: var(--border-orange); }
+        .state-left { background-color: var(--highlight-green); border-left-color: var(--border-green); }
+        .highlight-text { font-weight: bold; color: #d35400; }
+        .state-left .highlight-text { color: #2e7d32; }
+
+        /* --- Bulb --- */
+        .bulb-container {
+            margin-top: 10px;
+            text-align: center;
+            padding: 15px;
+            border-top: 1px solid #eee;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .bulb {
+            width: 80px; height: 80px;
+            background-color: #ddd;
+            border-radius: 50%;
+            border: 2px solid #aaa;
+            box-shadow: 0 0 0 rgba(255, 223, 0, 0);
+            transition: background-color 0.1s, box-shadow 0.1s;
+            position: relative;
+            margin-bottom: 10px;
+        }
+        .bulb::after {
+            content: ''; position: absolute; bottom: -12px; left: 25px;
+            width: 30px; height: 15px;
+            background: linear-gradient(90deg, #666, #999, #666);
+            border-radius: 2px; border: 1px solid #444;
+        }
+
+        /* --- Schematic --- */
+        .schematic-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .schematic {
+            width: 320px;
+            height: 250px;
+            stroke: #000;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: square;
+            stroke-linejoin: round;
+        }
+        .schematic text {
+            fill: #000;
+            stroke: none;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+        
+        .stats-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        .stats-table tr:nth-child(even) { background-color: #f9f9f9; }
+        .stats-table td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+        .stats-table td:last-child { font-weight: bold; text-align: right; font-family: 'Consolas', monospace; color: #2980b9; }
+        
+        .drag-hint { font-size: 0.85rem; color: #999; margin-top: -5px; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Rheostat Simulator</h1>
+    <p class="subtitle">Drag the slider to observe how wire length affects resistance and current.</p>
+
+    <div class="simulator-container">
+        
+        <!-- LEFT PANEL: Physical View -->
+        <div class="panel visual-panel">
+            <div style="width:100%; display:flex; justify-content:space-between; margin-bottom:5px;">
+                <strong>Physical View</strong>
+            </div>
+            
+            <svg id="rheostat-svg" viewBox="0 0 500 180" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="coilGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#555" />
+                        <stop offset="50%" style="stop-color:#777" />
+                        <stop offset="100%" style="stop-color:#444" />
+                    </linearGradient>
+                    <pattern id="wirePattern" x="0" y="0" width="5" height="10" patternUnits="userSpaceOnUse">
+                        <rect x="0" y="0" width="4" height="60" fill="url(#coilGradient)" />
+                        <rect x="4" y="0" width="1" height="60" fill="#333" />
+                    </pattern>
+                    <linearGradient id="rodGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ccc" />
+                        <stop offset="50%" style="stop-color:#fff" />
+                        <stop offset="100%" style="stop-color:#999" />
+                    </linearGradient>
+                </defs>
+
+                <!-- Wiring -->
+                <path d="M40,140 C40,160 20,160 10,160" stroke="#333" stroke-width="4" fill="none"/>
+                <path d="M460,55 C480,55 490,55 490,160" stroke="#c0392b" stroke-width="4" fill="none"/>
+
+                <!-- Stands -->
+                <path d="M40,60 L20,90 L20,150 L60,150 L60,90 Z" fill="#222" />
+                <path d="M460,60 L440,90 L440,150 L480,150 L480,90 Z" fill="#222" />
+                
+                <!-- Coil -->
+                <rect x="50" y="80" width="400" height="50" rx="5" ry="5" fill="url(#wirePattern)" stroke="#222" />
+                
+                <!-- Rod -->
+                <rect x="40" y="50" width="420" height="12" fill="url(#rodGradient)" stroke="#777" rx="3" />
+
+                <!-- Terminals -->
+                <circle cx="40" cy="130" r="6" fill="#silver" stroke="#555" stroke-width="2" />
+                <text x="50" y="135" font-size="14" font-weight="bold" fill="#333">B</text>
+                
+                <!-- Slider -->
+                <g id="slider-group" transform="translate(250, 0)">
+                    <rect x="-15" y="40" width="30" height="24" fill="#333" rx="2" />
+                    <rect class="slider-handle" x="-15" y="28" width="30" height="14" fill="#c0392b" rx="2" stroke="#8c281f"/>
+                    <path d="M-8,64 L8,64 L0,85 Z" fill="#d35400" />
+                    <text x="-10" y="20" font-size="14" font-weight="bold" fill="#c0392b">C</text>
+                </g>
+
+                <!-- Highlight -->
+                <rect id="active-coil" x="50" y="80" width="200" height="50" fill="rgba(255, 255, 0, 0.2)" pointer-events="none"/>
+            </svg>
+            <div class="drag-hint">Drag 'C' Left or Right</div>
+
+            <!-- Dynamic Text -->
+            <div id="dynamic-explanation">
+                Move the slider to see the explanation.
+            </div>
+
+            <div class="bulb-container">
+                <div id="bulb" class="bulb"></div>
+                <strong>12V Bulb</strong>
+                <span id="bulb-status" style="font-size:0.9em; color:#666;">Brightness: 50%</span>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Schematic -->
+        <div class="panel data-panel">
+            <div style="width:100%; text-align:left; margin-bottom:10px;">
+                <strong>Circuit Diagram</strong>
+            </div>
+
+            <!-- SCHEMATIC -->
+            <div class="schematic-container">
+                <svg class="schematic" viewBox="0 0 300 240">
+                    <!-- 1. Battery (Bottom Center) -->
+                    <!-- Main line from left part of circuit to Battery (-) -->
+                    <line x1="60" y1="200" x2="120" y2="200" />
+                    
+                    <!-- Battery Cells Symbol -->
+                    <!-- Cell 1 -->
+                    <line x1="120" y1="185" x2="120" y2="215" stroke-width="2"/> <!-- Long -->
+                    <line x1="128" y1="190" x2="128" y2="210" stroke-width="4"/> <!-- Short -->
+                    <!-- Cell 2 -->
+                    <line x1="136" y1="185" x2="136" y2="215" stroke-width="2"/> <!-- Long -->
+                    <line x1="144" y1="190" x2="144" y2="210" stroke-width="4"/> <!-- Short -->
+                    <!-- Cell 3 -->
+                    <line x1="152" y1="185" x2="152" y2="215" stroke-width="2"/> <!-- Long -->
+                    <line x1="160" y1="190" x2="160" y2="210" stroke-width="4"/> <!-- Short -->
+
+                    <!-- Line from Battery (+) to Right wire -->
+                    <line x1="160" y1="200" x2="260" y2="200" />
+
+                    <!-- Battery Text -->
+                    <text x="120" y="235" font-size="14">Battery</text>
+
+                    <!-- 2. Bulb (Left Vertical) -->
+                    <!-- Wire from Battery (-) up to Bulb -->
+                    <line x1="60" y1="200" x2="60" y2="150" />
+                    
+                    <!-- Bulb Symbol -->
+                    <circle cx="60" cy="130" r="18" fill="#fff" stroke="#000" />
+                    <line x1="48" y1="118" x2="72" y2="142" stroke-width="1.5" />
+                    <line x1="48" y1="142" x2="72" y2="118" stroke-width="1.5" />
+                    
+                    <!-- Text "Bulb" to the left -->
+                    <text x="10" y="135" font-size="14">Bulb</text>
+
+                    <!-- Wire from Bulb up to Terminal B -->
+                    <line x1="60" y1="110" x2="60" y2="60" />
+                    <line x1="60" y1="60" x2="80" y2="60" /> <!-- Turn right to B -->
+
+                    <!-- 3. Rheostat (Top Rectangle) -->
+                    <rect x="80" y="40" width="160" height="40" fill="none" stroke="#000" stroke-width="2" />
+                    
+                    <!-- Terminal B Dot -->
+                    <circle cx="80" cy="60" r="3" fill="black" stroke="none" />
+                    <text x="70" y="55" font-weight="bold">B</text>
+
+                    <!-- 4. Wiper C (Dynamic) -->
+                    <!-- Wire from Battery (+) goes Right, then Up, then Left -->
+                    <polyline points="260,200 260,20 160,20" fill="none" />
+                    
+                    <!-- Dynamic Drop line into the box -->
+                    <!-- Coordinates will be updated by JS -->
+                    <line id="wiper-drop" x1="160" y1="20" x2="160" y2="40" stroke="#000" stroke-width="2" />
+                    
+                    <!-- Arrowhead (Inverted Triangle) -->
+                    <!-- We use a polygon that we move with JS transform or coordinates -->
+                    <polygon id="wiper-arrow" points="152,40 168,40 160,52" fill="black" stroke="none"/>
+                    
+                    <!-- Label C -->
+                    <text id="label-c" x="165" y="35" font-weight="bold">C</text>
+
+                </svg>
+            </div>
+
+            <table class="stats-table">
+                <tr>
+                    <td>Voltage Source</td>
+                    <td>12.0 V</td>
+                </tr>
+                <tr>
+                    <td>Rheostat (R)</td>
+                    <td id="disp-resistance">25.0 &Omega;</td>
+                </tr>
+                <tr>
+                    <td>Current (I)</td>
+                    <td id="disp-current">0.34 A</td>
+                </tr>
+                <tr>
+                    <td>Bulb Brightness</td>
+                    <td id="disp-brightness">Medium</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const R_RHEOSTAT_MAX = 50; 
+        const R_BULB = 10;         
+        const VOLTAGE_SOURCE = 12; 
+        
+        // --- DOM Elements ---
+        const svg = document.getElementById('rheostat-svg');
+        const sliderGroup = document.getElementById('slider-group');
+        const activeCoilRect = document.getElementById('active-coil');
+        
+        // Schematic Elements
+        const wiperDrop = document.getElementById('wiper-drop');
+        const wiperArrow = document.getElementById('wiper-arrow');
+        const labelC = document.getElementById('label-c');
+        
+        const bulb = document.getElementById('bulb');
+        const bulbStatus = document.getElementById('bulb-status');
+        const explanationBox = document.getElementById('dynamic-explanation');
+        
+        // Data Displays
+        const dispRes = document.getElementById('disp-resistance');
+        const dispCurrent = document.getElementById('disp-current');
+        const dispBrightness = document.getElementById('disp-brightness');
+
+        // --- State ---
+        let isDragging = false;
+        // Physical SVG limits
+        const minX = 50;  // Left (Terminal B)
+        const maxX = 450; // Right
+        
+        // Schematic Limits (The rectangular box is x=80 to x=240, width 160)
+        // Wiper moves along the top wire
+        const schemMinX = 80;
+        const schemMaxX = 240;
+
+        // Initialize at 50%
+        let currentX = (maxX + minX) / 2;
+        let previousX = currentX;
+        
+        updateSimulation(currentX);
+
+        // --- Event Listeners ---
+        sliderGroup.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
+
+        sliderGroup.addEventListener('touchstart', (e) => { e.preventDefault(); startDrag(e.touches[0]); });
+        document.addEventListener('touchmove', (e) => { if(isDragging) drag(e.touches[0]); });
+        document.addEventListener('touchend', endDrag);
+
+        function startDrag(evt) {
+            isDragging = true;
+            sliderGroup.style.cursor = 'grabbing';
+        }
+
+        function drag(evt) {
+            if (!isDragging) return;
+            const pt = svg.createSVGPoint();
+            pt.x = evt.clientX;
+            pt.y = evt.clientY;
+            const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+            
+            let newX = svgP.x;
+            if (newX < minX) newX = minX;
+            if (newX > maxX) newX = maxX;
+
+            updateSimulation(newX);
+        }
+
+        function endDrag() {
+            isDragging = false;
+            sliderGroup.style.cursor = 'grab';
+        }
+
+        function updateSimulation(xPos) {
+            // Direction detection
+            const isMovingRight = xPos > previousX;
+            previousX = xPos;
+
+            // 1. Physical Slider Move
+            sliderGroup.setAttribute('transform', `translate(${xPos}, 0)`);
+
+            // 2. Percentage Calculation (0 to 1)
+            const percentage = (xPos - minX) / (maxX - minX);
+
+            // 3. Highlight Active Coil (From Left/B to Slider/C)
+            activeCoilRect.setAttribute('width', xPos - minX);
+
+            // 4. Update Schematic Wiper
+            // Map percentage to schematic X coordinates
+            const schematicWiperX = schemMinX + (percentage * (schemMaxX - schemMinX));
+            
+            // Move the drop line
+            // Line goes from top wire (y=20) down to box top (y=40)
+            // But the top horizontal wire (polyline) ends at 160 currently. We need to adjust the polyline logic too if we want perfect realism, 
+            // but usually schematic logic allows the wiper to slide along the component.
+            // To make it look connected, we update the drop line X.
+            // AND we need to update the top horizontal wire to reach this new X.
+            
+            // Get the polyline element. It was: <polyline points="260,200 260,20 160,20" ... />
+            // We need to change the last point to match schematicWiperX
+            const polyline = document.querySelector('.schematic polyline');
+            polyline.setAttribute('points', `260,200 260,20 ${schematicWiperX},20`);
+            
+            wiperDrop.setAttribute('x1', schematicWiperX);
+            wiperDrop.setAttribute('x2', schematicWiperX);
+
+            // Move the arrow (Triangle)
+            // Points: (x-8, 40) (x+8, 40) (x, 52)
+            const ax = schematicWiperX;
+            wiperArrow.setAttribute('points', `${ax-6},40 ${ax+6},40 ${ax},52`);
+            
+            // Move Label C
+            labelC.setAttribute('x', schematicWiperX + 8);
+
+            // 5. Physics
+            const r_rheostat = R_RHEOSTAT_MAX * percentage; 
+            const r_total = r_rheostat + R_BULB;
+            const current = VOLTAGE_SOURCE / r_total;
+
+            // 6. Visual Feedback (Bulb)
+            const maxCurrent = VOLTAGE_SOURCE / R_BULB; 
+            const minCurrent = VOLTAGE_SOURCE / (R_RHEOSTAT_MAX + R_BULB); 
+            const b = (current - minCurrent) / (maxCurrent - minCurrent);
+            const clampedB = Math.max(0, Math.min(1, b));
+
+            bulb.style.backgroundColor = `rgba(255, 255, ${clampedB < 0.1 ? 100 : 0}, ${0.2 + (clampedB * 0.8)})`;
+            bulb.style.boxShadow = `0 0 ${10 + (clampedB * 60)}px ${clampedB * 30}px rgba(255, 223, 0, ${clampedB})`;
+            bulbStatus.innerText = `Brightness: ${Math.round(clampedB * 100)}%`;
+
+            // 7. Update Stats
+            dispRes.innerText = r_rheostat.toFixed(1) + " Ω";
+            dispCurrent.innerText = current.toFixed(2) + " A";
+            dispBrightness.innerText = clampedB > 0.7 ? "Bright" : (clampedB > 0.3 ? "Medium" : "Dim");
+
+            // 8. Dynamic Text
+            updateExplanationText(percentage);
+        }
+
+        function updateExplanationText(percentage) {
+            let htmlContent = "";
+            if (percentage > 0.5) {
+                explanationBox.className = "state-right";
+                htmlContent = `
+                    As slider <strong>C</strong> moves to the <span class='highlight-text'>RIGHT</span>:<br>
+                    1. The length of wire (B to C) becomes <span class='highlight-text'>LONGER</span>.<br>
+                    2. Resistance becomes <span class='highlight-text'>LARGER</span>.<br>
+                    3. Bulb becomes <span class='highlight-text'>DIMMER</span>.
+                `;
+            } else {
+                explanationBox.className = "state-left";
+                htmlContent = `
+                    As slider <strong>C</strong> moves to the <span class='highlight-text'>LEFT</span>:<br>
+                    1. The length of wire (B to C) becomes <span class='highlight-text'>SHORTER</span>.<br>
+                    2. Resistance becomes <span class='highlight-text'>SMALLER</span>.<br>
+                    3. Bulb becomes <span class='highlight-text'>BRIGHTER</span>.
+                `;
+            }
+            explanationBox.innerHTML = htmlContent;
+        }
+    </script>
+</body>
+</html>
