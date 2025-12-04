@@ -40,6 +40,7 @@
         <a href="heating effect.html">➜ Heating Effect of Electricity</a>
         <a href="voltage_VS_current.html">➜ Number of cells VS current</a>
         <a href="ohmlaw.html">➜ how does resistance affect current?</a>
+        <a href="Rheostatsimulator.html.html">➜ Rheostat simulator.html</a>
     </div>
 
 </body>
